@@ -21,6 +21,8 @@
 using std::string;
 using std::vector;
 
+static std::default_random_engine generator;
+
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
   /**
    * TODO: Set the number of particles. Initialize all particles to 
@@ -32,7 +34,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
    */
   num_particles = 100;  // TODO: Set the number of particles
 
-  std::default_random_engine generator;
   std::normal_distribution<double> dist_x(x, std[0]);
   std::normal_distribution<double> dist_y(y, std[1]);
   std::normal_distribution<double> dist_theta(theta, std[2]);
@@ -63,8 +64,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
    *  http://www.cplusplus.com/reference/random/default_random_engine/
    */
   num_particles = particles.size();
-
-  std::default_random_engine generator;
 
   for (auto& particle : particles)
   {
@@ -191,7 +190,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     sum_weights += particle.weight;
   }
 
-  std::cout << "sum of the weights = " << sum_weights << std::endl;
+  // std::cout << "sum of the weights = " << sum_weights << std::endl;
 
   for (auto& particle : particles)
   {
@@ -206,7 +205,32 @@ void ParticleFilter::resample() {
    * NOTE: You may find std::discrete_distribution helpful here.
    *   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
    */
+  /**
+   * std::discrete_distribution produces random integers on the interval [0, n), 
+   * where the probability of each individual integer i is defined as wi/S, 
+   * that is the weight of the ith integer divided by the sum of all n weights.
+   */
 
+
+  vector<double> weights;
+  for (auto& particle : particles)
+  {
+    double weight = particle.weight;
+    weights.push_back(weight);
+  }
+
+  int numble_particles = particles.size();
+
+  vector<Particle> weighted_samples(numble_particles);
+  std::discrete_distribution<int> d(weights.begin(), weights.end());
+
+  for (int i = 0; i < numble_particles; ++i)
+  {
+    int idx = d(generator);
+    weighted_samples[idx] = particles[idx];
+  }
+
+  particles = weighted_samples;
 }
 
 void ParticleFilter::SetAssociations(Particle& particle, 
