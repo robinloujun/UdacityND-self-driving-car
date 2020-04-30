@@ -58,11 +58,8 @@ inline double dist(double x1, double y1, double x2, double y2) {
   return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
-// definition of one over square root of 2*pi:
-static float STATIC_ONE_OVER_SQRT_2PI = 1/sqrt(2*M_PI);
-
 /**
- * normpdf(x,mu_x,sigma_x,y,mu_y,sigma_y) computes the probability function 
+ * multivar_gauss(x,mu_x,sigma_x,y,mu_y,sigma_y) computes the probability function 
  * at values x, y using the multivariate-Gaussian distribution 
  * with mean mu_x, mu_y and standard deviation std_x, std_y. 
  * x, mu_x, std_x, y, mu_y and std_y must be scalar! 
@@ -70,8 +67,8 @@ static float STATIC_ONE_OVER_SQRT_2PI = 1/sqrt(2*M_PI);
  * The normal pdf is y=f(x,mu_x,std_x,y,mu_y,std_y)= 
  * 1/(sqrt(2pi)*std_x*std_y)*e{-[(x−mu_x)^2/(2*std_x^2)+(y−mu_y)^2/(2*std_y^2)]}
  */
-static double multivar_gauss(double x, double mu_x, double std_x, double y, double mu_y, double std_y) {
-  return (STATIC_ONE_OVER_SQRT_2PI/(std_x*std_y))*exp(-0.5*pow((x-mu_x)/std_x,2)-0.5*pow((y-mu_y)/std_y,2));
+inline double multivar_gauss(double x, double mu_x, double std_x, double y, double mu_y, double std_y) {
+  return 1/(2*M_PI*std_x*std_y)*exp(-0.5*(pow((x-mu_x)/std_x,2)+pow((y-mu_y)/std_y,2)));
 }
 
 /**

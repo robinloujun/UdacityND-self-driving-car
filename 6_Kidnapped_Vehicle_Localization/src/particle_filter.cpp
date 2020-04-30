@@ -32,7 +32,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
    * NOTE: Consult particle_filter.h for more information about this method 
    *   (and others in this file).
    */
-  num_particles = 100;  // TODO: Set the number of particles
+  num_particles = 10;  // TODO: Set the number of particles
 
   std::normal_distribution<double> dist_x(x, std[0]);
   std::normal_distribution<double> dist_y(y, std[1]);
@@ -63,24 +63,13 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
    *  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
    *  http://www.cplusplus.com/reference/random/default_random_engine/
    */
-  num_particles = particles.size();
-
   for (auto& particle : particles)
   {
     double measurement_x, measurement_y, measurement_theta;
-    
-    if (yaw_rate < 1e-6)
-    {
-      measurement_x = particle.x + velocity * cos(particle.theta);
-      measurement_y = particle.y + velocity * sin(particle.theta);
-      measurement_theta = particle.theta;
-    }
-    else
-    {
-      measurement_x = particle.x + velocity / yaw_rate * (sin(particle.theta + yaw_rate * delta_t) - sin(particle.theta));
-      measurement_y = particle.y + velocity / yaw_rate * (cos(particle.theta) - cos(particle.theta + yaw_rate * delta_t));
-      measurement_theta = particle.theta + yaw_rate * delta_t;
-    }
+
+    measurement_x = particle.x + (velocity / yaw_rate) * (sin(particle.theta + yaw_rate * delta_t) - sin(particle.theta));
+    measurement_y = particle.y + (velocity / yaw_rate) * (cos(particle.theta) - cos(particle.theta + yaw_rate * delta_t));
+    measurement_theta = particle.theta + yaw_rate * delta_t;
 
     std::normal_distribution<double> dist_x(measurement_x, std_pos[0]);
     std::normal_distribution<double> dist_y(measurement_y, std_pos[1]);
@@ -105,7 +94,7 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
   for (auto& obs : observations)
   {
     double dist_min = std::numeric_limits<double>::max();
-    for (auto& pred : predicted)
+    for (const auto& pred : predicted)
     {
       double d = dist(pred.x, pred.y, obs.x, obs.y);
       if (d < dist_min)
@@ -139,7 +128,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     // First extract the landmarks inside the sensor range
     vector<LandmarkObs> predicted_landmarks;
 
-    for (auto& map_landmark : map_landmarks.landmark_list)
+    for (const auto& map_landmark : map_landmarks.landmark_list)
     {
       double d = dist(particle.x, particle.y, map_landmark.x_f, map_landmark.y_f);
       if (d <= sensor_range)
@@ -154,7 +143,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     // Transform the observations to map coordinate
     vector<LandmarkObs> observed_landmarks;
-    for (auto& obs : observations)
+    for (const auto& obs : observations)
     {
       LandmarkObs landmark;
       landmark.id = obs.id;
@@ -170,31 +159,22 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     double weight = 1;
     double std_x = std_landmark[0];
     double std_y = std_landmark[1];
+    double mu_x, mu_y;
 
-    for (auto& obs : observed_landmarks)
+    for (const auto& obs : observed_landmarks)
     {
-      int idx = obs.id;
-      double mu_x = predicted_landmarks[idx].x;
-      double mu_y = predicted_landmarks[idx].y;
-      weight *= multivar_gauss(obs.x, mu_x, std_x, obs.y, mu_y, std_y);
+      for (const auto& pre : predicted_landmarks)
+        if (obs.id == pre.id)
+        {
+          mu_x = pre.x;
+          mu_y = pre.y;
+          break;
+        }      
+        weight *= multivar_gauss(obs.x, mu_x, std_x, obs.y, mu_y, std_y);
     }
 
     // Update the weight of the particle
-    particle.weight = weight;    
-  }
-
-  // Normalized the weights
-  double sum_weights;
-  for (const auto& particle : particles)
-  {
-    sum_weights += particle.weight;
-  }
-
-  // std::cout << "sum of the weights = " << sum_weights << std::endl;
-
-  for (auto& particle : particles)
-  {
-    particle.weight /= sum_weights;
+    particle.weight = weight;
   }
 }
 
@@ -210,27 +190,22 @@ void ParticleFilter::resample() {
    * where the probability of each individual integer i is defined as wi/S, 
    * that is the weight of the ith integer divided by the sum of all n weights.
    */
-
-
   vector<double> weights;
-  for (auto& particle : particles)
+
+  for (const auto& particle : particles)
   {
-    double weight = particle.weight;
-    weights.push_back(weight);
+    weights.push_back(particle.weight);
   }
 
-  int numble_particles = particles.size();
-
-  vector<Particle> weighted_samples(numble_particles);
+  vector<Particle> resampled;
   std::discrete_distribution<int> d(weights.begin(), weights.end());
 
-  for (int i = 0; i < numble_particles; ++i)
+  for (int i = 0; i < num_particles; ++i)
   {
-    int idx = d(generator);
-    weighted_samples[idx] = particles[idx];
+    resampled.push_back(particles[d(generator)]);
   }
 
-  particles = weighted_samples;
+  particles = std::move(resampled);
 }
 
 void ParticleFilter::SetAssociations(Particle& particle, 
