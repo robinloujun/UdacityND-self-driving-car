@@ -1,0 +1,3 @@
+[submodule "7_Highway_Driving"]
+	path = 7_Highway_Driving
+	url = git@github.com:udacity/CarND-Path-Planning-Project.git
